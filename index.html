@@ -27,7 +27,9 @@
   .badge.fee { background: #fee2e2; color: #991b1b; }
   @media (max-width: 800px) {
     .container { flex-direction: column; height: auto; }
-    #map { height: 60vh; }
+    /* flex: none is required: the base `flex: 1` sets flex-basis: 0%, which
+       overrides height on the column axis and collapses the map to 0px. */
+    #map { flex: none; height: 60vh; position: sticky; top: 0; z-index: 1000; }
     .sidebar { width: 100%; height: auto; }
   }
 </style>
