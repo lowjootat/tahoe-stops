@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lake Tahoe Free Stops – West to East</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, sans-serif; margin: 0; background: #f0f4f8; color: #1a1a1a; }
+  header { background: #0c4a6e; color: white; padding: 1.2rem 1.5rem; }
+  header h1 { margin: 0 0 0.3rem; font-size: 1.6rem; }
+  header p { margin: 0; opacity: 0.9; font-size: 0.95rem; }
+  .container { display: flex; height: calc(100vh - 90px); }
+  #map { flex: 1; min-width: 0; height: 100%; }
+  .sidebar { width: 380px; background: white; overflow-y: auto; border-left: 1px solid #ddd; padding: 1rem; }
+  .sidebar h2 { margin: 0 0 0.5rem; font-size: 1.1rem; }
+  .note { font-size: 0.85rem; color: #555; margin-bottom: 1rem; }
+  .stop { border-bottom: 1px solid #eee; padding: 0.8rem 0; cursor: pointer; }
+  .stop:hover { background: #f8fafc; }
+  .stop.current { background: #fef3c7; border-left: 4px solid #f59e0b; padding-left: 0.5rem; }
+  .stop h3 { margin: 0 0 0.3rem; font-size: 1rem; }
+  .stop .order { color: #0369a1; font-weight: 600; margin-right: 0.3rem; }
+  .stop p { margin: 0.2rem 0; font-size: 0.85rem; color: #444; }
+  .stop a { color: #0369a1; font-size: 0.8rem; }
+  .badge { display: inline-block; background: #dcfce7; color: #166534; font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 4px; margin-left: 0.3rem; }
+  .badge.fee { background: #fee2e2; color: #991b1b; }
+  @media (max-width: 800px) {
+    .container { flex-direction: column; height: auto; }
+    #map { height: 60vh; }
+    .sidebar { width: 100%; height: auto; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Lake Tahoe Free / Low-Cost Stops</h1>
+  <p>West → East around the basin · Starting near Heidi’s Pancake House</p>
+</header>
+<div class="container">
+  <div id="map"></div>
+  <div class="sidebar">
+    <h2>Stops (west to east)</h2>
+    <p class="note">Click a stop to zoom the map. Green = free / short walk, orange = current spot, red = fee.</p>
+    <div id="list"></div>
+  </div>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+const stops = [
+  {
+    order: 1,
+    name: "Emerald Bay Vista Point",
+    note: "Free roadside pullout with Emerald Bay views",
+    lat: 38.95513,
+    lng: -120.10704,
+    link: "https://maps.app.goo.gl/xMLYFWx2yafDKNES6",
+    free: true
+  },
+  {
+    order: 2,
+    name: "Kiva Beach",
+    note: "Free parking + short walk to shoreline",
+    lat: 38.9405,
+    lng: -120.0510,
+    link: "https://maps.app.goo.gl/47iovjvWqQ33FE9g6",
+    free: true
+  },
+  {
+    order: 3,
+    name: "Regan Beach",
+    note: "Free parking, playground, grass, restrooms",
+    lat: 38.9443,
+    lng: -119.9860,
+    link: "https://www.google.com/maps/search/?api=1&query=Regan+Beach+3199+Sacramento+Ave+South+Lake+Tahoe",
+    free: true
+  },
+  {
+    order: "★",
+    name: "Heidi’s Pancake House (You are here)",
+    note: "3485 Lake Tahoe Blvd, South Lake Tahoe",
+    lat: 38.9467,
+    lng: -119.9641,
+    link: "https://www.google.com/maps/search/?api=1&query=Heidi%27s+Pancake+House+3485+Lake+Tahoe+Blvd",
+    current: true,
+    free: true
+  },
+  {
+    order: 4,
+    name: "Lakeside Beach",
+    note: "Sandy beach; private with entrance fee when attendant present",
+    lat: 38.9604,
+    lng: -119.9503,
+    link: "https://goo.gl/maps/iGManDSauyDbFB958",
+    free: false
+  },
+  {
+    order: 5,
+    name: "Logan Shoals Vista Point",
+    note: "Short walk from Hwy 50 pullout, excellent views",
+    lat: 39.0582,
+    lng: -119.9452,
+    link: "https://maps.google.com/?cid=3163485419825634740",
+    free: true
+  },
+  {
+    order: 6,
+    name: "Skunk Harbor",
+    note: "Free roadside pullouts; ~1.5-mile hike down gated road",
+    lat: 39.1285,
+    lng: -119.9311,
+    link: "https://www.google.com/maps/search/?api=1&query=Skunk+Harbor+Trailhead+Hwy+28+Lake+Tahoe",
+    free: true
+  },
+  {
+    order: 7,
+    name: "Memorial Point Scenic Overlook",
+    note: "Easy free roadside pullout near Sand Harbor",
+    lat: 39.2099,
+    lng: -119.9296,
+    link: "https://www.google.com/maps/place/Memorial+Point+Scenic+Overlook/@39.2098982,-119.9295949,17z",
+    free: true
+  }
+];
+
+const map = L.map('map').setView([39.0, -120.0], 9);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+}).addTo(map);
+
+stops.forEach(s => {
+  const color = s.current ? '#f59e0b' : (s.free ? '#16a34a' : '#dc2626');
+  const marker = L.circleMarker([s.lat, s.lng], {
+    radius: s.current ? 12 : 9,
+    fillColor: color,
+    color: '#fff',
+    weight: 2,
+    opacity: 1,
+    fillOpacity: 0.9
+  }).addTo(map);
+  marker.bindPopup(`<b>${s.name}</b><br>${s.note}<br><a href="${s.link}" target="_blank" rel="noopener">Open in Google Maps</a>`);
+  s.marker = marker;
+});
+
+const list = document.getElementById('list');
+stops.forEach(s => {
+  const div = document.createElement('div');
+  div.className = 'stop' + (s.current ? ' current' : '');
+  div.innerHTML = `
+    <h3><span class="order">${s.order}.</span> ${s.name}
+      ${s.free ? '<span class="badge">Free</span>' : '<span class="badge fee">Fee</span>'}
+    </h3>
+    <p>${s.note}</p>
+    <a href="${s.link}" target="_blank" rel="noopener">Google Maps →</a>
+  `;
+  div.onclick = () => {
+    map.setView([s.lat, s.lng], 14);
+    s.marker.openPopup();
+  };
+  list.appendChild(div);
+});
+
+setTimeout(() => map.invalidateSize(), 100);
+</script>
+</body>
+</html>
